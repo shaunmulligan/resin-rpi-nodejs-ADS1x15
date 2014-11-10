@@ -6,6 +6,17 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "dependencies": {
+    "coffee-script": "~1.8.0",
+    "i2c": ">= 0.1.4",
+    "sleep": ">=1.1.8",
+    "deasync": ">=0.0.7"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "preinstall": "bash deps.sh",
+    "start": "modprobe i2c-dev && node test.js"
+  },
   "keywords": [
     "ADS1115",
     "raspberryPi",
