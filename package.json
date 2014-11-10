@@ -15,7 +15,7 @@
   "devDependencies": {},
   "scripts": {
     "preinstall": "bash deps.sh",
-    "start": "modprobe i2c-dev && node test.js"
+    "start": "modprobe i2c-dev && coffee test.coffee"
   },
   "keywords": [
     "ADS1115",
