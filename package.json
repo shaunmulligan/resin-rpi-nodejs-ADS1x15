@@ -1,0 +1,18 @@
+{
+  "name": "ADS1115",
+  "version": "0.0.0",
+  "description": "module for reading Analog-to-digital sensor (ADS1115) on the raspberry pi.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ADS1115",
+    "raspberryPi",
+    "i2c",
+    "ADC",
+    "Analog-to-digital"
+  ],
+  "author": "Shaun Mulligan <shaun@resin.io>",
+  "license": "ISC"
+}
