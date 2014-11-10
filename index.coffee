@@ -175,7 +175,7 @@ class Analog2Digital
 
 	    # Write config register to the ADC
 	    bytes = [(config >> 8) & 0xFF, config & 0xFF]
-	    @i2c.writeBytes(@__ADS1015_REG_POINTER_CONFIG, bytes, function(err) {console.log('i2c write err')})
+	    @i2c.writeBytes(@__ADS1015_REG_POINTER_CONFIG, bytes, (err) -> {console.log('i2c write err')})
 
 	    # Wait for the ADC conversion to complete
 	    # The minimum delay depends on the sps: delay >= 1/sps
@@ -185,7 +185,7 @@ class Analog2Digital
 
 	    done = false
 	    # Read the conversion results
-	    @i2c.readBytes(@__ADS1015_REG_POINTER_CONVERT, 2, function(err, result){
+	    @i2c.readBytes(@__ADS1015_REG_POINTER_CONVERT, 2, (err, result) -> {
 	    		if (@ic == @__IC_ADS1015)
 			    	# Shift right 4 bits for the 12-bit ADS1015 and convert to mV
 			    	returnValue = ( ((result[0] << 8) | (result[1] & 0xFF)) >> 4 )*pga/2048.0
