@@ -106,8 +106,8 @@ class Analog2Digital
     512:@__ADS1015_REG_CONFIG_PGA_0_512V,
     256:@__ADS1015_REG_CONFIG_PGA_0_256V
   }
-  constructor: (@address = 0x48, ic=__IC_ADS1015, @debug=false) ->
 
+  constructor: (@address = 0x48, ic=__IC_ADS1015, @debug=false) ->
     #set up i2c communication with ADS1115
     @i2c = new wire(@address, {device: '/dev/i2c-1', debug:true})
     # Make sure the IC specified is valid
@@ -117,95 +117,93 @@ class Analog2Digital
         return -1
       else
         @ic = ic
-
       @pga = 6144	#programmable gain set as 6144 initially.
 
-    readADCSingleEnded: (channel=0, pga=6144, sps=250) ->
-      ###"Gets a single-ended ADC reading from the specified channel in mV. \
-	    The sample rate for this mode (single-shot) can be used to lower the noise \
-	    (low sps) or to lower the power consumption (high sps) by duty cycling, \
-	    see datasheet page 14 for more info. \
-      The pga must be given in mV, see page 13 for the supported values."###
-      returnValue = -100
-      # With invalid channel return -1
-      if channel > 3
-        if @debug
-          print "ADS1x15: Invalid channel specified: %d" % channel
-          return -1
+  readADCSingleEnded: (channel=0, pga=6144, sps=250) ->
+    ###"Gets a single-ended ADC reading from the specified channel in mV. \
+    The sample rate for this mode (single-shot) can be used to lower the noise \
+    (low sps) or to lower the power consumption (high sps) by duty cycling, \
+    see datasheet page 14 for more info. \
+    The pga must be given in mV, see page 13 for the supported values."###
+    returnValue = -100
+    # With invalid channel return -1
+    if channel > 3
+      if @debug
+        print "ADS1x15: Invalid channel specified: %d" % channel
+      return -1
 
-	    # Disable comparator, Non-latching, Alert/Rdy active low
-	    # traditional comparator, single-shot mode
-      config = @__ADS1015_REG_CONFIG_CQUE_NONE    | \
-      @__ADS1015_REG_CONFIG_CLAT_NONLAT  | \
-      @__ADS1015_REG_CONFIG_CPOL_ACTVLOW | \
-      @__ADS1015_REG_CONFIG_CMODE_TRAD   | \
-      @__ADS1015_REG_CONFIG_MODE_SINGLE
+	# Disable comparator, Non-latching, Alert/Rdy active low
+	# traditional comparator, single-shot mode
+    config = @__ADS1015_REG_CONFIG_CQUE_NONE | \
+    @__ADS1015_REG_CONFIG_CLAT_NONLAT  | \
+    @__ADS1015_REG_CONFIG_CPOL_ACTVLOW | \
+    @__ADS1015_REG_CONFIG_CMODE_TRAD   | \
+    @__ADS1015_REG_CONFIG_MODE_SINGLE
 
       # Set sample per seconds, defaults to 250sps
 	    # If sps is in the dictionary (defined in init) it returns the value of the constant
       # othewise it returns the value for 250sps. This saves a lot of if/elif/else code!
+    if (@ic == @__IC_ADS1015)
+      config |= @spsADS1015.setdefault(sps, @__ADS1015_REG_CONFIG_DR_1600SPS)
+    else
+    if ( (sps not in @spsADS1115) & @debug)
+      print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
+      config |= @spsADS1115.setdefault(sps, @__ADS1115_REG_CONFIG_DR_250SPS)
+
+    # Set PGA/voltage range, defaults to +-6.144V
+    if ( (pga not in @pgaADS1x15) & @debug)
+      print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
+      config |= @pgaADS1x15.setdefault(pga, @__ADS1015_REG_CONFIG_PGA_6_144V)
+
+    @pga = pga
+
+    # Set the channel to be converted
+    if channel == 3
+      config |= @__ADS1015_REG_CONFIG_MUX_SINGLE_3
+    else if channel == 2
+      config |= @__ADS1015_REG_CONFIG_MUX_SINGLE_2
+    else if channel == 1
+      config |= @__ADS1015_REG_CONFIG_MUX_SINGLE_1
+    else
+      config |= @__ADS1015_REG_CONFIG_MUX_SINGLE_0
+
+    # Set 'start single-conversion' bit
+    config |= @__ADS1015_REG_CONFIG_OS_SINGLE
+    # Write config register to the ADC
+    bytes = [(config >> 8) & 0xFF, config & 0xFF]
+    @i2c.writeBytes(@__ADS1015_REG_POINTER_CONFIG, bytes, (err) ->
+      console.log('i2c write err')
+    )
+
+    # Wait for the ADC conversion to complete
+    # The minimum delay depends on the sps: delay >= 1/sps
+    # We add 0.1ms to be sure
+    delay = 1.0/sps+0.0001
+    time.usleep(delay)
+
+    done = false
+    # Read the conversion results
+    @i2c.readBytes(@__ADS1015_REG_POINTER_CONVERT, 2, (err, result) ->
       if (@ic == @__IC_ADS1015)
-        config |= @spsADS1015.setdefault(sps, @__ADS1015_REG_CONFIG_DR_1600SPS)
+      	# Shift right 4 bits for the 12-bit ADS1015 and convert to mV
+        returnValue = ( ((result[0] << 8) | (result[1] & 0xFF)) >> 4 )*pga/2048.0
       else
-      if ( (sps not in @spsADS1115) & @debug)
-        print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
-        config |= @spsADS1115.setdefault(sps, @__ADS1115_REG_CONFIG_DR_250SPS)
-
-      # Set PGA/voltage range, defaults to +-6.144V
-      if ( (pga not in @pgaADS1x15) & @debug)
-        print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
-        config |= @pgaADS1x15.setdefault(pga, @__ADS1015_REG_CONFIG_PGA_6_144V)
-
-      @pga = pga
-
-      # Set the channel to be converted
-      if channel == 3
-        config |= @__ADS1015_REG_CONFIG_MUX_SINGLE_3
-      else if channel == 2
-        config |= @__ADS1015_REG_CONFIG_MUX_SINGLE_2
-      else if channel == 1
-        config |= @__ADS1015_REG_CONFIG_MUX_SINGLE_1
+      # Return a mV value for the ADS1115
+      # (Take signed values into account as well)
+      val = (result[0] << 8) | (result[1])
+      if val > 0x7FFF
+        console.log((val - 0xFFFF)*pga/32768.0)
+        returnValue = (val - 0xFFFF)*pga/32768.0
       else
-        config |= @__ADS1015_REG_CONFIG_MUX_SINGLE_0
+        console.log(( (result[0] << 8) | (result[1]) )*pga/32768.0)
+        returnValue = ( (result[0] << 8) | (result[1]) )*pga/32768.0)
 
-      # Set 'start single-conversion' bit
-      config |= @__ADS1015_REG_CONFIG_OS_SINGLE
+    while !done
+      require('deasync').runLoopOnce();
 
-      # Write config register to the ADC
-      bytes = [(config >> 8) & 0xFF, config & 0xFF]
-      @i2c.writeBytes(@__ADS1015_REG_POINTER_CONFIG, bytes, (err) ->
-        console.log('i2c write err')
-      )
-
-      # Wait for the ADC conversion to complete
-      # The minimum delay depends on the sps: delay >= 1/sps
-      # We add 0.1ms to be sure
-      delay = 1.0/sps+0.0001
-      time.usleep(delay)
-
-      done = false
-      # Read the conversion results
-      @i2c.readBytes(@__ADS1015_REG_POINTER_CONVERT, 2, (err, result) ->
-        if (@ic == @__IC_ADS1015)
-        	# Shift right 4 bits for the 12-bit ADS1015 and convert to mV
-          returnValue = ( ((result[0] << 8) | (result[1] & 0xFF)) >> 4 )*pga/2048.0
-        else
-        # Return a mV value for the ADS1115
-        # (Take signed values into account as well)
-        val = (result[0] << 8) | (result[1])
-        if val > 0x7FFF
-          console.log((val - 0xFFFF)*pga/32768.0)
-          returnValue = (val - 0xFFFF)*pga/32768.0
-        else
-          console.log(( (result[0] << 8) | (result[1]) )*pga/32768.0)
-          returnValue = ( (result[0] << 8) | (result[1]) )*pga/32768.0)
-
-      while !done
-        require('deasync').runLoopOnce();
-		
-      return returnValue
+    return returnValue
 	    
-    talk: ->
-      console.log "My i2c address is #{@address}"
+  talk: ->
+    console.log "My i2c address is #{@address}"
 
 module.exports = Analog2Digital
