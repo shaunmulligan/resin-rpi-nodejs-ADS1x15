@@ -2,14 +2,14 @@ wire = require 'i2c'
 time = require 'sleep'
 wait = require 'wait.for'
 
-class Analog2Digital 
+class Analog2Digital
 	# IC Identifiers
-	@__IC_ADS1015                      : 0x00
-  	@__IC_ADS1115                      : 0x01
+	@__IC_ADS1015: 0x00
+  	@__IC_ADS1115: 0x01
 
   	# Pointer Register
-  	@__ADS1015_REG_POINTER_MASK        : 0x03
-  	@__ADS1015_REG_POINTER_CONVERT     : 0x00
+  	@__ADS1015_REG_POINTER_MASK: 0x03
+  	@__ADS1015_REG_POINTER_CONVERT : 0x00
   	@__ADS1015_REG_POINTER_CONFIG      : 0x01
   	@__ADS1015_REG_POINTER_LOWTHRESH   : 0x02
   	@__ADS1015_REG_POINTER_HITHRESH    : 0x03
@@ -114,7 +114,7 @@ class Analog2Digital
     	#set up i2c communication with ADS1115 
     	@i2c = new wire(@address, {device: '/dev/i2c-1', debug:true})
     	# Make sure the IC specified is valid
-	    if ((ic < @__IC_ADS1015) | (ic > @__IC_ADS1115)):
+	    if ((ic < @__IC_ADS1015) | (ic > @__IC_ADS1115))
 	      if (@debug)
 	        print "ADS1x15: Invalid IC specfied: %h" % ic
 	      return -1
@@ -201,9 +201,9 @@ class Analog2Digital
 				  returnValue = ( (result[0] << 8) | (result[1]) )*pga/32768.0
 	    	})
 
-	    while(!done) {
-		  require('deasync').runLoopOnce();
-		}
+	    while !done
+	    	require('deasync').runLoopOnce();
+		
 	    return returnValue
 	    
     talk: ->
