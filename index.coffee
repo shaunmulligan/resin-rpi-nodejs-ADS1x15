@@ -109,7 +109,7 @@ class Analog2Digital
 
   constructor: (@address = 0x48, ic=__IC_ADS1015, @debug=false) ->
     #set up i2c communication with ADS1115
-    @i2c = new wire(@address, {device: '/dev/i2c-1', debug:true})
+    @i2c = new wire(@address, {device: '/dev/i2c-1', debug:false})
     # Make sure the IC specified is valid
     if ((ic < @__IC_ADS1015) | (ic > @__IC_ADS1115))
       if (@debug)
@@ -132,29 +132,31 @@ class Analog2Digital
         print "ADS1x15: Invalid channel specified: %d" % channel
       return -1
 
-	# Disable comparator, Non-latching, Alert/Rdy active low
-	# traditional comparator, single-shot mode
+    # Disable comparator, Non-latching, Alert/Rdy active low
+    # traditional comparator, single-shot mode
     config = @__ADS1015_REG_CONFIG_CQUE_NONE | \
     @__ADS1015_REG_CONFIG_CLAT_NONLAT  | \
     @__ADS1015_REG_CONFIG_CPOL_ACTVLOW | \
     @__ADS1015_REG_CONFIG_CMODE_TRAD   | \
     @__ADS1015_REG_CONFIG_MODE_SINGLE
 
-      # Set sample per seconds, defaults to 250sps
-	    # If sps is in the dictionary (defined in init) it returns the value of the constant
-      # othewise it returns the value for 250sps. This saves a lot of if/elif/else code!
+    # Set sample per seconds, defaults to 250sps
+    # If sps is in the dictionary (defined in init) it returns the value of the constant
+    # othewise it returns the value for 250sps. This saves a lot of if/elif/else code!
     if (@ic == @__IC_ADS1015)
-      config |= @spsADS1015.setdefault(sps, @__ADS1015_REG_CONFIG_DR_1600SPS)
+      #config |= @spsADS1015.setdefault(sps, @__ADS1015_REG_CONFIG_DR_1600SPS)
+      config |= setDefault(sps, @spsADS1015, @__ADS1015_REG_CONFIG_DR_1600SPS)
     else
-    if ( (sps not in @spsADS1115) & @debug)
-      print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
-      config |= @spsADS1115.setdefault(sps, @__ADS1115_REG_CONFIG_DR_250SPS)
+      if ( (sps not in @spsADS1115) & @debug)
+        print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
+        #config |= @spsADS1115.setdefault(sps, @__ADS1115_REG_CONFIG_DR_250SPS)
+      config |= setDefault(sps, @spsADS1115, @__ADS1115_REG_CONFIG_DR_250SPS)
 
     # Set PGA/voltage range, defaults to +-6.144V
     if ( (pga not in @pgaADS1x15) & @debug)
       print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
-      config |= @pgaADS1x15.setdefault(pga, @__ADS1015_REG_CONFIG_PGA_6_144V)
-
+      #config |= @pgaADS1x15.setdefault(pga, @__ADS1015_REG_CONFIG_PGA_6_144V)
+    config |= setDefault(pga, @pgaADS1x15, @__ADS1015_REG_CONFIG_PGA_6_144V)
     @pga = pga
 
     # Set the channel to be converted
@@ -205,5 +207,11 @@ class Analog2Digital
 	    
   talk: ->
     console.log "My i2c address is #{@address}"
+
+setDefault (key, dict, defVal) ->
+  if key in dict
+    return key
+  else
+    return defVal
 
 module.exports = Analog2Digital
