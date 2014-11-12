@@ -174,7 +174,10 @@ class Analog2Digital
     config |= @__ADS1015_REG_CONFIG_OS_SINGLE
     # Write config register to the ADC
     bytes = [(config >> 8) & 0xFF, config & 0xFF]
-    console.log('writing config to i2c')
+    #console.log('writing config to i2c')
+    console.log 'config: ' + config
+    console.log '@ic: '+ @ic
+    console.log 'channel: '+ channel
     @i2c.writeBytes(@__ADS1015_REG_POINTER_CONFIG, bytes, (err) ->
       if(err)
         console.log "error writing config to ADC"
@@ -188,7 +191,7 @@ class Analog2Digital
 
     done = false
     # Read the conversion results
-    console.log('read results from i2c bus')
+    #console.log('read results from i2c bus')
     @i2c.readBytes(@__ADS1015_REG_POINTER_CONVERT, 2, (err, result) ->
       if (@ic == @__IC_ADS1015)
       	# Shift right 4 bits for the 12-bit ADS1015 and convert to mV
