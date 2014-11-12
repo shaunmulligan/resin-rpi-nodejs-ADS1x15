@@ -146,18 +146,18 @@ class Analog2Digital
     # othewise it returns the value for 250sps. This saves a lot of if/elif/else code!
     if (@ic == @__IC_ADS1015)
       #config |= @spsADS1015.setdefault(sps, @__ADS1015_REG_CONFIG_DR_1600SPS)
-      config |= setDefault(sps, @spsADS1015, @__ADS1015_REG_CONFIG_DR_1600SPS)
+      config |= @setDefault(sps, @spsADS1015, @__ADS1015_REG_CONFIG_DR_1600SPS)
     else
       if ( (sps not in @spsADS1115) & @debug)
         print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
         #config |= @spsADS1115.setdefault(sps, @__ADS1115_REG_CONFIG_DR_250SPS)
-      config |= setDefault(sps, @spsADS1115, @__ADS1115_REG_CONFIG_DR_250SPS)
+      config |= @setDefault(sps, @spsADS1115, @__ADS1115_REG_CONFIG_DR_250SPS)
 
     # Set PGA/voltage range, defaults to +-6.144V
     if ( (pga not in @pgaADS1x15) & @debug)
       print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
       #config |= @pgaADS1x15.setdefault(pga, @__ADS1015_REG_CONFIG_PGA_6_144V)
-    config |= setDefault(pga, @pgaADS1x15, @__ADS1015_REG_CONFIG_PGA_6_144V)
+    config |= @setDefault(pga, @pgaADS1x15, @__ADS1015_REG_CONFIG_PGA_6_144V)
     @pga = pga
 
     # Set the channel to be converted
@@ -209,10 +209,10 @@ class Analog2Digital
   talk: ->
     console.log "My i2c address is #{@address}"
 
-setDefault (key, dict, defVal) ->
-  if key in dict
-    return key
-  else
-    return defVal
+  setDefault: (key, dict, defVal) ->
+    if key in dict
+      return key
+    else
+      return defVal
 
 module.exports = Analog2Digital
