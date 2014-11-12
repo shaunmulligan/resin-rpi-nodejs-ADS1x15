@@ -176,7 +176,8 @@ class Analog2Digital
     bytes = [(config >> 8) & 0xFF, config & 0xFF]
     console.log('writing config to i2c')
     @i2c.writeBytes(@__ADS1015_REG_POINTER_CONFIG, bytes, (err) ->
-      console.log('i2c write err')
+      if(err)
+        console.log "error writing config to ADC"
     )
 
     # Wait for the ADC conversion to complete
@@ -198,11 +199,11 @@ class Analog2Digital
       # (Take signed values into account as well)
       val = (result[0] << 8) | (result[1])
       if val > 0x7FFF
-        console.log((val - 0xFFFF)*pga/32768.0)
+        #console.log((val - 0xFFFF)*pga/32768.0)
         returnValue = (val - 0xFFFF)*pga/32768.0
         done = true
       else
-        console.log(( (result[0] << 8) | (result[1]) )*pga/32768.0)
+        #console.log(( (result[0] << 8) | (result[1]) )*pga/32768.0)
         done = true
         returnValue = ( (result[0] << 8) | (result[1]) )*pga/32768.0)
 
