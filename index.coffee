@@ -3,82 +3,80 @@ wire = require 'i2c'
 time = require 'sleep'
 
 class Analog2Digital
+  #IC Identifiers
+  __IC_ADS1015: 0x00
+  __IC_ADS1115: 0x01
 
+  # Pointer Register
+  __ADS1015_REG_POINTER_MASK: 0x03
+  __ADS1015_REG_POINTER_CONVERT: 0x00
+  __ADS1015_REG_POINTER_CONFIG: 0x01
+  __ADS1015_REG_POINTER_LOWTHRESH: 0x02
+  __ADS1015_REG_POINTER_HITHRESH: 0x03
+
+  # Config Register
+  __ADS1015_REG_CONFIG_OS_MASK: 0x8000
+  __ADS1015_REG_CONFIG_OS_SINGLE: 0x8000  # Write: Set to start a single-conversion
+  __ADS1015_REG_CONFIG_OS_BUSY: 0x0000  # Read: Bit : 0 when conversion is in progress
+  __ADS1015_REG_CONFIG_OS_NOTBUSY: 0x8000  # Read: Bit : 1 when device is not performing a conversion
+
+  __ADS1015_REG_CONFIG_MUX_MASK: 0x7000
+  __ADS1015_REG_CONFIG_MUX_DIFF_0_1: 0x0000  # Differential P : AIN0, N : AIN1 (default)
+  __ADS1015_REG_CONFIG_MUX_DIFF_0_3: 0x1000  # Differential P : AIN0, N : AIN3
+  __ADS1015_REG_CONFIG_MUX_DIFF_1_3: 0x2000  # Differential P : AIN1, N : AIN3
+  __ADS1015_REG_CONFIG_MUX_DIFF_2_3: 0x3000  # Differential P : AIN2, N : AIN3
+  __ADS1015_REG_CONFIG_MUX_SINGLE_0: 0x4000  # Single-ended AIN0
+  __ADS1015_REG_CONFIG_MUX_SINGLE_1: 0x5000  # Single-ended AIN1
+  __ADS1015_REG_CONFIG_MUX_SINGLE_2: 0x6000  # Single-ended AIN2
+  __ADS1015_REG_CONFIG_MUX_SINGLE_3: 0x7000  # Single-ended AIN3
+
+  __ADS1015_REG_CONFIG_PGA_MASK: 0x0E00
+  __ADS1015_REG_CONFIG_PGA_6_144V: 0x0000  # +/-6.144V range
+  __ADS1015_REG_CONFIG_PGA_4_096V: 0x0200  # +/-4.096V range
+  __ADS1015_REG_CONFIG_PGA_2_048V: 0x0400  # +/-2.048V range (default)
+  __ADS1015_REG_CONFIG_PGA_1_024V: 0x0600  # +/-1.024V range
+  __ADS1015_REG_CONFIG_PGA_0_512V: 0x0800  # +/-0.512V range
+  __ADS1015_REG_CONFIG_PGA_0_256V: 0x0A00  # +/-0.256V range
+
+  __ADS1015_REG_CONFIG_MODE_MASK: 0x0100
+  __ADS1015_REG_CONFIG_MODE_CONTIN: 0x0000  # Continuous conversion mode
+  __ADS1015_REG_CONFIG_MODE_SINGLE: 0x0100  # Power-down single-shot mode (default)
+  __ADS1015_REG_CONFIG_DR_MASK: 0x00E0
+  __ADS1015_REG_CONFIG_DR_128SPS: 0x0000  # 128 samples per second
+  __ADS1015_REG_CONFIG_DR_250SPS: 0x0020  # 250 samples per second
+  __ADS1015_REG_CONFIG_DR_490SPS: 0x0040  # 490 samples per second
+  __ADS1015_REG_CONFIG_DR_920SPS: 0x0060  # 920 samples per second
+  __ADS1015_REG_CONFIG_DR_1600SPS: 0x0080  # 1600 samples per second (default)
+  __ADS1015_REG_CONFIG_DR_2400SPS: 0x00A0  # 2400 samples per second
+  __ADS1015_REG_CONFIG_DR_3300SPS: 0x00C0  # 3300 samples per second (also 0x00E0)
+
+  __ADS1115_REG_CONFIG_DR_8SPS: 0x0000  # 8 samples per second
+  __ADS1115_REG_CONFIG_DR_16SPS: 0x0020  # 16 samples per second
+  __ADS1115_REG_CONFIG_DR_32SPS: 0x0040  # 32 samples per second
+  __ADS1115_REG_CONFIG_DR_64SPS: 0x0060  # 64 samples per second
+  __ADS1115_REG_CONFIG_DR_128SPS: 0x0080  # 128 samples per second
+  __ADS1115_REG_CONFIG_DR_250SPS: 0x00A0  # 250 samples per second (default)
+  __ADS1115_REG_CONFIG_DR_475SPS: 0x00C0  # 475 samples per second
+  __ADS1115_REG_CONFIG_DR_860SPS: 0x00E0  # 860 samples per second
+
+  __ADS1015_REG_CONFIG_CMODE_MASK: 0x0010
+  __ADS1015_REG_CONFIG_CMODE_TRAD: 0x0000  # Traditional comparator with hysteresis (default)
+  __ADS1015_REG_CONFIG_CMODE_WINDOW: 0x0010  # Window comparator
+
+  __ADS1015_REG_CONFIG_CPOL_MASK: 0x0008
+  __ADS1015_REG_CONFIG_CPOL_ACTVLOW: 0x0000  # ALERT/RDY pin is low when active (default)
+  __ADS1015_REG_CONFIG_CPOL_ACTVHI: 0x0008  # ALERT/RDY pin is high when active
+
+  __ADS1015_REG_CONFIG_CLAT_MASK: 0x0004  # Determines if ALERT/RDY pin latches once asserted
+  __ADS1015_REG_CONFIG_CLAT_NONLAT: 0x0000  # Non-latching comparator (default)
+  __ADS1015_REG_CONFIG_CLAT_LATCH: 0x0004  # Latching comparator
+
+  __ADS1015_REG_CONFIG_CQUE_MASK: 0x0003
+  __ADS1015_REG_CONFIG_CQUE_1CONV: 0x0000  # Assert ALERT/RDY after one conversions
+  __ADS1015_REG_CONFIG_CQUE_2CONV: 0x0001  # Assert ALERT/RDY after two conversions
+  __ADS1015_REG_CONFIG_CQUE_4CONV: 0x0002  # Assert ALERT/RDY after four conversions
+  __ADS1015_REG_CONFIG_CQUE_NONE: 0x0003  # Disable the comparator and put ALERT/RDY in high state (default)
   constructor: (@address = 0x48, ic=__IC_ADS1015, @debug=false) ->
-    #IC Identifiers
-    @__IC_ADS1015: 0x00
-    @__IC_ADS1115: 0x01
-
-    # Pointer Register
-    @__ADS1015_REG_POINTER_MASK: 0x03
-    @__ADS1015_REG_POINTER_CONVERT: 0x00
-    @__ADS1015_REG_POINTER_CONFIG: 0x01
-    @__ADS1015_REG_POINTER_LOWTHRESH: 0x02
-    @__ADS1015_REG_POINTER_HITHRESH: 0x03
-
-    # Config Register
-    @__ADS1015_REG_CONFIG_OS_MASK: 0x8000
-    @__ADS1015_REG_CONFIG_OS_SINGLE: 0x8000  # Write: Set to start a single-conversion
-    @__ADS1015_REG_CONFIG_OS_BUSY: 0x0000  # Read: Bit : 0 when conversion is in progress
-    @__ADS1015_REG_CONFIG_OS_NOTBUSY: 0x8000  # Read: Bit : 1 when device is not performing a conversion
-
-    @__ADS1015_REG_CONFIG_MUX_MASK: 0x7000
-    @__ADS1015_REG_CONFIG_MUX_DIFF_0_1: 0x0000  # Differential P : AIN0, N : AIN1 (default)
-    @__ADS1015_REG_CONFIG_MUX_DIFF_0_3: 0x1000  # Differential P : AIN0, N : AIN3
-    @__ADS1015_REG_CONFIG_MUX_DIFF_1_3: 0x2000  # Differential P : AIN1, N : AIN3
-    @__ADS1015_REG_CONFIG_MUX_DIFF_2_3: 0x3000  # Differential P : AIN2, N : AIN3
-    @__ADS1015_REG_CONFIG_MUX_SINGLE_0: 0x4000  # Single-ended AIN0
-    @__ADS1015_REG_CONFIG_MUX_SINGLE_1: 0x5000  # Single-ended AIN1
-    @__ADS1015_REG_CONFIG_MUX_SINGLE_2: 0x6000  # Single-ended AIN2
-    @__ADS1015_REG_CONFIG_MUX_SINGLE_3: 0x7000  # Single-ended AIN3
-
-    @__ADS1015_REG_CONFIG_PGA_MASK: 0x0E00
-    @__ADS1015_REG_CONFIG_PGA_6_144V: 0x0000  # +/-6.144V range
-    @__ADS1015_REG_CONFIG_PGA_4_096V: 0x0200  # +/-4.096V range
-    @__ADS1015_REG_CONFIG_PGA_2_048V: 0x0400  # +/-2.048V range (default)
-    @__ADS1015_REG_CONFIG_PGA_1_024V: 0x0600  # +/-1.024V range
-    @__ADS1015_REG_CONFIG_PGA_0_512V: 0x0800  # +/-0.512V range
-    @__ADS1015_REG_CONFIG_PGA_0_256V: 0x0A00  # +/-0.256V range
-
-    @__ADS1015_REG_CONFIG_MODE_MASK: 0x0100
-    @__ADS1015_REG_CONFIG_MODE_CONTIN: 0x0000  # Continuous conversion mode
-    @__ADS1015_REG_CONFIG_MODE_SINGLE: 0x0100  # Power-down single-shot mode (default)
-    @__ADS1015_REG_CONFIG_DR_MASK: 0x00E0
-    @__ADS1015_REG_CONFIG_DR_128SPS: 0x0000  # 128 samples per second
-    @__ADS1015_REG_CONFIG_DR_250SPS: 0x0020  # 250 samples per second
-    @__ADS1015_REG_CONFIG_DR_490SPS: 0x0040  # 490 samples per second
-    @__ADS1015_REG_CONFIG_DR_920SPS: 0x0060  # 920 samples per second
-    @__ADS1015_REG_CONFIG_DR_1600SPS: 0x0080  # 1600 samples per second (default)
-    @__ADS1015_REG_CONFIG_DR_2400SPS: 0x00A0  # 2400 samples per second
-    @__ADS1015_REG_CONFIG_DR_3300SPS: 0x00C0  # 3300 samples per second (also 0x00E0)
-
-    @__ADS1115_REG_CONFIG_DR_8SPS: 0x0000  # 8 samples per second
-    @__ADS1115_REG_CONFIG_DR_16SPS: 0x0020  # 16 samples per second
-    @__ADS1115_REG_CONFIG_DR_32SPS: 0x0040  # 32 samples per second
-    @__ADS1115_REG_CONFIG_DR_64SPS: 0x0060  # 64 samples per second
-    @__ADS1115_REG_CONFIG_DR_128SPS: 0x0080  # 128 samples per second
-    @__ADS1115_REG_CONFIG_DR_250SPS: 0x00A0  # 250 samples per second (default)
-    @__ADS1115_REG_CONFIG_DR_475SPS: 0x00C0  # 475 samples per second
-    @__ADS1115_REG_CONFIG_DR_860SPS: 0x00E0  # 860 samples per second
-
-    @__ADS1015_REG_CONFIG_CMODE_MASK: 0x0010
-    @__ADS1015_REG_CONFIG_CMODE_TRAD: 0x0000  # Traditional comparator with hysteresis (default)
-    @__ADS1015_REG_CONFIG_CMODE_WINDOW: 0x0010  # Window comparator
-
-    @__ADS1015_REG_CONFIG_CPOL_MASK: 0x0008
-    @__ADS1015_REG_CONFIG_CPOL_ACTVLOW: 0x0000  # ALERT/RDY pin is low when active (default)
-    @__ADS1015_REG_CONFIG_CPOL_ACTVHI: 0x0008  # ALERT/RDY pin is high when active
-
-    @__ADS1015_REG_CONFIG_CLAT_MASK: 0x0004  # Determines if ALERT/RDY pin latches once asserted
-    @__ADS1015_REG_CONFIG_CLAT_NONLAT: 0x0000  # Non-latching comparator (default)
-    @__ADS1015_REG_CONFIG_CLAT_LATCH: 0x0004  # Latching comparator
-
-    @__ADS1015_REG_CONFIG_CQUE_MASK: 0x0003
-    @__ADS1015_REG_CONFIG_CQUE_1CONV: 0x0000  # Assert ALERT/RDY after one conversions
-    @__ADS1015_REG_CONFIG_CQUE_2CONV: 0x0001  # Assert ALERT/RDY after two conversions
-    @__ADS1015_REG_CONFIG_CQUE_4CONV: 0x0002  # Assert ALERT/RDY after four conversions
-    @__ADS1015_REG_CONFIG_CQUE_NONE: 0x0003  # Disable the comparator and put ALERT/RDY in high state (default)
-    
     # Dictionaries with the sampling speed values
     # These simplify and clean the code (avoid the abuse of if/elif/else clauses)
     @spsADS1115 = {
@@ -110,6 +108,7 @@ class Analog2Digital
       256:@__ADS1015_REG_CONFIG_PGA_0_256V
     }
     #set up i2c communication with ADS1115
+    console.log('initialise i2c link')
     @i2c = new wire(@address, {device: '/dev/i2c-1', debug:false})
     # Make sure the IC specified is valid
     if ((ic < @__IC_ADS1015) | (ic > @__IC_ADS1115))
@@ -175,6 +174,7 @@ class Analog2Digital
     config |= @__ADS1015_REG_CONFIG_OS_SINGLE
     # Write config register to the ADC
     bytes = [(config >> 8) & 0xFF, config & 0xFF]
+    console.log('writing config to i2c')
     @i2c.writeBytes(@__ADS1015_REG_POINTER_CONFIG, bytes, (err) ->
       console.log('i2c write err')
     )
@@ -182,15 +182,17 @@ class Analog2Digital
     # Wait for the ADC conversion to complete
     # The minimum delay depends on the sps: delay >= 1/sps
     # We add 0.1ms to be sure
-    delay = 1.0/sps+0.0001
+    delay = Math.floor 1.0/sps+0.0001
     time.usleep(delay)
 
     done = false
     # Read the conversion results
+    console.log('read results from i2c bus')
     @i2c.readBytes(@__ADS1015_REG_POINTER_CONVERT, 2, (err, result) ->
       if (@ic == @__IC_ADS1015)
       	# Shift right 4 bits for the 12-bit ADS1015 and convert to mV
         returnValue = ( ((result[0] << 8) | (result[1] & 0xFF)) >> 4 )*pga/2048.0
+        done = true
       else
       # Return a mV value for the ADS1115
       # (Take signed values into account as well)
@@ -198,8 +200,10 @@ class Analog2Digital
       if val > 0x7FFF
         console.log((val - 0xFFFF)*pga/32768.0)
         returnValue = (val - 0xFFFF)*pga/32768.0
+        done = true
       else
         console.log(( (result[0] << 8) | (result[1]) )*pga/32768.0)
+        done = true
         returnValue = ( (result[0] << 8) | (result[1]) )*pga/32768.0)
 
     while !done
@@ -212,7 +216,7 @@ class Analog2Digital
 
   setDefault: (key, dict, defVal) ->
     if key of dict
-      return key
+      return dict[key]
     else
       return defVal
 
