@@ -76,7 +76,7 @@ class Analog2Digital
   __ADS1015_REG_CONFIG_CQUE_2CONV: 0x0001  # Assert ALERT/RDY after two conversions
   __ADS1015_REG_CONFIG_CQUE_4CONV: 0x0002  # Assert ALERT/RDY after four conversions
   __ADS1015_REG_CONFIG_CQUE_NONE: 0x0003  # Disable the comparator and put ALERT/RDY in high state (default)
-  constructor: (@address = 0x48, ic=__IC_ADS1015, @debug=false) ->
+  constructor: (@address = 0x48, @ic=@__IC_ADS1015, @debug=false) ->
     # Dictionaries with the sampling speed values
     # These simplify and clean the code (avoid the abuse of if/elif/else clauses)
     @spsADS1115 = {
@@ -144,19 +144,15 @@ class Analog2Digital
     # If sps is in the dictionary (defined in init) it returns the value of the constant
     # othewise it returns the value for 250sps. This saves a lot of if/elif/else code!
     if (@ic == @__IC_ADS1015)
-      #config |= @spsADS1015.setdefault(sps, @__ADS1015_REG_CONFIG_DR_1600SPS)
-      console.log @spsADS1015
       config |= @setDefault(sps, @spsADS1015, @__ADS1015_REG_CONFIG_DR_1600SPS)
     else
       if ( (sps not in @spsADS1115) & @debug)
         print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
-        #config |= @spsADS1115.setdefault(sps, @__ADS1115_REG_CONFIG_DR_250SPS)
       config |= @setDefault(sps, @spsADS1115, @__ADS1115_REG_CONFIG_DR_250SPS)
 
     # Set PGA/voltage range, defaults to +-6.144V
     if ( (pga not in @pgaADS1x15) & @debug)
       print "ADS1x15: Invalid pga specified: %d, using 6144mV" % sps
-      #config |= @pgaADS1x15.setdefault(pga, @__ADS1015_REG_CONFIG_PGA_6_144V)
     config |= @setDefault(pga, @pgaADS1x15, @__ADS1015_REG_CONFIG_PGA_6_144V)
     @pga = pga
 
@@ -174,9 +170,6 @@ class Analog2Digital
     config |= @__ADS1015_REG_CONFIG_OS_SINGLE
     # Write config register to the ADC
     bytes = [(config >> 8) & 0xFF, config & 0xFF]
-    #console.log('writing config to i2c')
-    console.log 'config: ' + config
-    console.log '@ic: '+ @ic
     console.log 'channel: '+ channel
     @i2c.writeBytes(@__ADS1015_REG_POINTER_CONFIG, bytes, (err) ->
       if(err)
@@ -186,12 +179,11 @@ class Analog2Digital
     # Wait for the ADC conversion to complete
     # The minimum delay depends on the sps: delay >= 1/sps
     # We add 0.1ms to be sure
-    delay = Math.floor 1.0/sps+0.0001
+    delay = Math.floor((1.0/sps+0.001)*1000)
     time.usleep(delay)
 
     done = false
     # Read the conversion results
-    #console.log('read results from i2c bus')
     @i2c.readBytes(@__ADS1015_REG_POINTER_CONVERT, 2, (err, result) ->
       if (@ic == @__IC_ADS1015)
       	# Shift right 4 bits for the 12-bit ADS1015 and convert to mV
@@ -202,11 +194,9 @@ class Analog2Digital
       # (Take signed values into account as well)
       val = (result[0] << 8) | (result[1])
       if val > 0x7FFF
-        #console.log((val - 0xFFFF)*pga/32768.0)
         returnValue = (val - 0xFFFF)*pga/32768.0
         done = true
       else
-        #console.log(( (result[0] << 8) | (result[1]) )*pga/32768.0)
         done = true
         returnValue = ( (result[0] << 8) | (result[1]) )*pga/32768.0)
 
