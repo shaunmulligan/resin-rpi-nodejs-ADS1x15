@@ -180,7 +180,7 @@ class Analog2Digital
     # The minimum delay depends on the sps: delay >= 1/sps
     # We add 0.1ms to be sure
     delay = Math.floor((1.0/sps+0.001)*1000)
-    time.usleep(delay)
+    time.usleep(delay*1000)
 
     done = false
     # Read the conversion results
